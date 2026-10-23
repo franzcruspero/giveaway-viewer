@@ -45,7 +45,7 @@ function usernameList(value) {
 async function loadRaffle() {
     const { data, error } = await supabase
         .from('raffle_state')
-        .select('status, winner_count, drawn_usernames, sub_luck')
+        .select('status, winner_count, last_winners, drawn_usernames, sub_luck')
         .eq('id', 1)
         .maybeSingle();
 
@@ -67,6 +67,7 @@ async function loadRaffle() {
     return {
         status: data.status,
         winnerCount: Math.min(count, MAX_WINNERS),
+        lastWinners: usernameList(data.last_winners),
         drawnUsernames: usernameList(data.drawn_usernames),
         subLuck,
     };
@@ -192,7 +193,7 @@ export const handler = async (event) => {
             .filter(Boolean);
         await saveRaffle({
             status: 'closed',
-            last_winners: winnerNames,
+            last_winners: [...new Set([...raffle.lastWinners, ...winnerNames])],
             drawn_usernames: [...new Set([...excluded, ...winnerNames])],
         });
 

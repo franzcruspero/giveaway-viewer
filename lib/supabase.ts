@@ -22,6 +22,53 @@ export type RaffleState = {
 
 const MAX_WINNERS = 50;
 
+type FixtureEntrant = {
+  username: string;
+  pity_tickets: number;
+  is_loser: boolean;
+};
+
+const fixtureEntrants: FixtureEntrant[] = [
+  { username: "nova", pity_tickets: 4, is_loser: false },
+  { username: "pixel", pity_tickets: 2, is_loser: false },
+  { username: "ash", pity_tickets: 8, is_loser: false },
+  { username: "birch", pity_tickets: 7, is_loser: false },
+  { username: "ember", pity_tickets: 6, is_loser: false },
+  { username: "cedar", pity_tickets: 5, is_loser: false },
+  { username: "dune", pity_tickets: 4, is_loser: false },
+  { username: "fern", pity_tickets: 3, is_loser: false },
+  { username: "glen", pity_tickets: 3, is_loser: false },
+  { username: "haze", pity_tickets: 2, is_loser: false },
+  { username: "iris", pity_tickets: 2, is_loser: false },
+  { username: "jade", pity_tickets: 1, is_loser: false },
+  { username: "kelp", pity_tickets: 1, is_loser: false },
+  { username: "quartz", pity_tickets: 1, is_loser: false },
+  { username: "lark", pity_tickets: 9, is_loser: true },
+  { username: "mink", pity_tickets: 8, is_loser: true },
+  { username: "newt", pity_tickets: 7, is_loser: true },
+  { username: "onyx", pity_tickets: 6, is_loser: true },
+  { username: "kite", pity_tickets: 5, is_loser: true },
+  { username: "pebble", pity_tickets: 4, is_loser: true },
+  { username: "quail", pity_tickets: 4, is_loser: true },
+  { username: "moss", pity_tickets: 3, is_loser: true },
+  { username: "reed", pity_tickets: 3, is_loser: true },
+  { username: "sage", pity_tickets: 2, is_loser: true },
+  { username: "thorn", pity_tickets: 2, is_loser: true },
+  { username: "umber", pity_tickets: 1, is_loser: true },
+];
+
+const fixtureRaffle = {
+  status: "closed" as RaffleStatus,
+  winner_count: 2,
+  last_winners: ["nova", "pixel"],
+  drawn_usernames: ["nova", "pixel"],
+  sub_luck: 3,
+};
+
+function usingFixtures(): boolean {
+  return !process.env.SUPABASE_URL || !process.env.SUPABASE_KEY;
+}
+
 type PityRowRecord = {
   username: string | null;
   pity_tickets: number | string | null;
@@ -77,6 +124,10 @@ function writeError(error: { message: string; code?: string }): WriteResult {
 export async function loadPityRows(): Promise<
   { rows: PityRow[] } | { error: string }
 > {
+  if (usingFixtures()) {
+    return { rows: sortedFixtureRows() };
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -100,6 +151,10 @@ export async function removeEntrant(
   username: string,
   isLoser: boolean,
 ): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return removeFixtureEntrant(username, isLoser);
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -178,6 +233,10 @@ async function dropFromRaffleLists(
 }
 
 export async function readdEntrant(username: string): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return readdFixtureEntrant(username);
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -200,6 +259,10 @@ export async function readdEntrant(username: string): Promise<WriteResult> {
 }
 
 export async function readdAllLosers(): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return readdAllFixtureLosers();
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -258,9 +321,152 @@ function usernameList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function sortedFixtureRows(): PityRow[] {
+  return [...fixtureEntrants]
+    .sort(
+      (left, right) =>
+        right.pity_tickets - left.pity_tickets ||
+        left.username.localeCompare(right.username),
+    )
+    .map((row) => ({ ...row }));
+}
+
+function readFixtureRaffle(): { state: RaffleState } {
+  const count = Number(fixtureRaffle.winner_count);
+  const winnerCount =
+    Number.isInteger(count) && count >= 1 ? Math.min(count, MAX_WINNERS) : 1;
+
+  return {
+    state: {
+      status: raffleStatus(fixtureRaffle.status),
+      winnerCount,
+      lastWinners: usernameList(fixtureRaffle.last_winners),
+      drawnUsernames: usernameList(fixtureRaffle.drawn_usernames),
+      subLuck: subLuckValue(fixtureRaffle.sub_luck),
+    },
+  };
+}
+
+function dropFixtureFromRaffleLists(username: string): boolean {
+  const name = username.trim().toLowerCase();
+  if (!name) {
+    return false;
+  }
+
+  const drawn = usernameList(fixtureRaffle.drawn_usernames);
+  const winners = usernameList(fixtureRaffle.last_winners);
+  if (!drawn.includes(name) && !winners.includes(name)) {
+    return false;
+  }
+
+  fixtureRaffle.last_winners = winners.filter((winner) => winner !== name);
+  fixtureRaffle.drawn_usernames = drawn.filter((winner) => winner !== name);
+  return true;
+}
+
+function removeFixtureEntrant(username: string, isLoser: boolean): WriteResult {
+  const name = username.trim();
+  if (!name) {
+    return { error: "Entrant was not found." };
+  }
+
+  const index = fixtureEntrants.findIndex(
+    (row) => row.username === name && row.is_loser === isLoser,
+  );
+  if (index >= 0) {
+    fixtureEntrants.splice(index, 1);
+  }
+
+  const removedFromLists = dropFixtureFromRaffleLists(name);
+  if (index < 0 && !removedFromLists) {
+    return { error: "Entrant was not found." };
+  }
+  return {};
+}
+
+function readdFixtureEntrant(username: string): WriteResult {
+  const row = fixtureEntrants.find(
+    (entrant) => entrant.username === username && entrant.is_loser,
+  );
+  if (!row) {
+    return { error: "Entrant was not found." };
+  }
+  row.is_loser = false;
+  return {};
+}
+
+function readdAllFixtureLosers(): WriteResult {
+  const losers = fixtureEntrants.filter((entrant) => entrant.is_loser);
+  if (!losers.length) {
+    return { error: "No previous losers to add." };
+  }
+  for (const loser of losers) {
+    loser.is_loser = false;
+  }
+  return {};
+}
+
+function moveFixtureWinnerToLosers(username: string): WriteResult {
+  const name = username.trim().toLowerCase();
+  if (!name) {
+    return { error: "Entrant was not found." };
+  }
+  if (fixtureRaffle.status === "ended") {
+    return { error: "The raffle has already ended." };
+  }
+
+  const drawn = usernameList(fixtureRaffle.drawn_usernames);
+  if (!drawn.includes(name)) {
+    const row = fixtureEntrants.find(
+      (entrant) => entrant.username === name && !entrant.is_loser,
+    );
+    if (!row) {
+      return { error: "Entrant was not found." };
+    }
+    row.is_loser = true;
+    return {};
+  }
+
+  const row = fixtureEntrants.find((entrant) => entrant.username === name);
+  if (!row) {
+    return { error: "Entrant was not found." };
+  }
+  row.is_loser = true;
+  fixtureRaffle.last_winners = usernameList(fixtureRaffle.last_winners).filter(
+    (winner) => winner !== name,
+  );
+  fixtureRaffle.drawn_usernames = drawn.filter((winner) => winner !== name);
+  return {};
+}
+
+function finalizeFixtureRaffle(): WriteResult {
+  if (fixtureRaffle.status === "ended") {
+    return { error: "The raffle has already ended." };
+  }
+
+  const winners = new Set(usernameList(fixtureRaffle.last_winners));
+  for (let index = fixtureEntrants.length - 1; index >= 0; index -= 1) {
+    if (winners.has(fixtureEntrants[index].username)) {
+      fixtureEntrants.splice(index, 1);
+    }
+  }
+  for (const entrant of fixtureEntrants) {
+    entrant.is_loser = true;
+  }
+
+  fixtureRaffle.status = "ended";
+  fixtureRaffle.last_winners = [];
+  fixtureRaffle.drawn_usernames = [];
+  return {};
+}
+
 export async function loadRaffleState(): Promise<
   { state: RaffleState } | { error: string }
 > {
+  if (usingFixtures()) {
+    return readFixtureRaffle();
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -299,6 +505,10 @@ export async function setSubLuck(value: number): Promise<WriteResult> {
   if (!Number.isInteger(value) || value < 1 || value > 10) {
     return { error: "Subscriber luck must be a whole number from 1 to 10." };
   }
+  if (usingFixtures()) {
+    fixtureRaffle.sub_luck = value;
+    return {};
+  }
 
   const supabase = createSupabase();
   if ("error" in supabase) {
@@ -321,6 +531,10 @@ export async function setSubLuck(value: number): Promise<WriteResult> {
 }
 
 export async function moveWinnerToLosers(username: string): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return moveFixtureWinnerToLosers(username);
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;
@@ -398,7 +612,49 @@ export async function moveWinnerToLosers(username: string): Promise<WriteResult>
   return {};
 }
 
+function clearFixtureEntrants(): WriteResult {
+  fixtureEntrants.splice(0, fixtureEntrants.length);
+  fixtureRaffle.last_winners = [];
+  fixtureRaffle.drawn_usernames = [];
+  return {};
+}
+
+export async function clearAllEntrants(): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return clearFixtureEntrants();
+  }
+
+  const supabase = createSupabase();
+  if ("error" in supabase) {
+    return supabase;
+  }
+
+  const { error: deleteError } = await supabase.from("pity_system").delete().neq("username", "");
+
+  if (deleteError) {
+    return writeError(deleteError);
+  }
+
+  const { data, error: raffleError } = await supabase
+    .from("raffle_state")
+    .update({ last_winners: [], drawn_usernames: [] })
+    .eq("id", 1)
+    .select("id");
+
+  if (raffleError) {
+    return raffleWriteError(raffleError);
+  }
+  if (!data?.length) {
+    return { error: "Could not update the raffle." };
+  }
+  return {};
+}
+
 export async function finalizeRaffle(): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return finalizeFixtureRaffle();
+  }
+
   const supabase = createSupabase();
   if ("error" in supabase) {
     return supabase;

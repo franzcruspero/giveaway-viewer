@@ -148,7 +148,7 @@ export function RaffleControls({
             </p>
             <ConfirmButton
               title="End the raffle"
-              description="The latest winners are removed and everyone else is marked as a loser."
+              description="Drawn winners are removed and everyone else is marked as a loser."
               confirmLabel="End raffle"
               tone="danger"
               disabled={endPending}

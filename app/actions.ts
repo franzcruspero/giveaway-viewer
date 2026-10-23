@@ -15,6 +15,7 @@ import {
   finalizeRaffle,
   moveWinnerToLosers,
   setSubLuck,
+  clearAllEntrants as clearAllEntrantsFromDb,
 } from "@/lib/supabase";
 
 export type LoginState = {
@@ -158,6 +159,21 @@ export async function updateSubLuck(
 
   const value = Number(formData.get("sub_luck"));
   const result = await setSubLuck(value);
+  if (result.error) {
+    return result;
+  }
+
+  revalidatePath("/");
+  return {};
+}
+
+export async function clearEntrants(): Promise<EntrantActionState> {
+  const denied = await requireEditor();
+  if (denied) {
+    return denied;
+  }
+
+  const result = await clearAllEntrantsFromDb();
   if (result.error) {
     return result;
   }
