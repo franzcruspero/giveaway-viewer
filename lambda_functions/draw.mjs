@@ -202,7 +202,7 @@ export const handler = async (event) => {
             .join(', ');
         const joinCode = process.env.JOIN_CODE ?? ''
         const discordLink = process.env.DISCORD_LINK ?? ''
-        const responseMessage = `Winners: ${names}. Polar's join code is ${joinCode}. Link to discord: ${discordLink}`;
+        const responseMessage = `Winners: ${names} - Polar's join code is ${joinCode}. Link to discord: ${discordLink}`;
 
         return chat(200, responseMessage);
 
