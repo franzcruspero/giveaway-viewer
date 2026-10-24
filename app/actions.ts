@@ -133,7 +133,8 @@ export async function returnDrawnWinner(
     return { error: "Entrant was not found." };
   }
 
-  const result = await moveWinnerToLosers(username);
+  const revokeTicket = formData.get("revoke_ticket") === "true";
+  const result = await moveWinnerToLosers(username, revokeTicket);
   if (result.error) {
     return result;
   }

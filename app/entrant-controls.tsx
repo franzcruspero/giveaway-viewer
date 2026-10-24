@@ -56,7 +56,7 @@ function placeMenu(button: HTMLElement, menu: HTMLElement) {
   return { top, left };
 }
 
-function MobileActions({
+function EntrantActions({
   username,
   disabled,
   children,
@@ -148,10 +148,6 @@ function MobileActions({
     }
 
     function onResize() {
-      if (window.matchMedia("(min-width: 640px)").matches) {
-        close();
-        return;
-      }
       const currentButton = buttonRef.current;
       const currentMenu = menuRef.current;
       if (currentButton && currentMenu) {
@@ -250,6 +246,185 @@ function MobileActions({
   );
 }
 
+type TicketChoice = "keep" | "revoke";
+
+function MoveToLosersButton({
+  username,
+  formAction,
+  pending,
+  busy,
+  className,
+}: {
+  username: string;
+  formAction: (formData: FormData) => void;
+  pending: boolean;
+  busy: boolean;
+  className: string;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const revokeInputRef = useRef<HTMLInputElement>(null);
+  const confirmLock = useRef(false);
+  const titleId = useId();
+  const descriptionId = useId();
+  const choiceName = useId();
+  const [mounted, setMounted] = useState(false);
+  const [choice, setChoice] = useState<TicketChoice>("keep");
+  const name = username || "This entrant";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  function openDialog(event: MouseEvent<HTMLButtonElement>) {
+    formRef.current = event.currentTarget.form;
+    setChoice("keep");
+    dialogRef.current?.showModal();
+  }
+
+  function closeDialog() {
+    dialogRef.current?.close();
+  }
+
+  function confirm() {
+    if (confirmLock.current) {
+      return;
+    }
+    confirmLock.current = true;
+    if (revokeInputRef.current) {
+      revokeInputRef.current.value = choice === "revoke" ? "true" : "false";
+    }
+    const form = formRef.current;
+    closeDialog();
+    form?.requestSubmit();
+  }
+
+  const dialog = (
+    <dialog
+      ref={dialogRef}
+      role="dialog"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      className="confirm-dialog m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-background p-0 text-left text-foreground shadow-xl backdrop:bg-zinc-950/40 dark:border-zinc-800"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          closeDialog();
+        }
+      }}
+      onClose={() => {
+        confirmLock.current = false;
+        setChoice("keep");
+      }}
+    >
+      <form
+        className="flex flex-col gap-5 p-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          confirm();
+        }}
+      >
+        <div className="flex flex-col gap-2">
+          <h2 id={titleId} className="text-base font-medium">
+            Move to losers
+          </h2>
+          <p
+            id={descriptionId}
+            className="text-sm text-zinc-600 dark:text-zinc-400"
+          >
+            {name} leaves this raffle.
+          </p>
+        </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">Ticket outcome</legend>
+          <label
+            className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2 ${
+              choice === "keep"
+                ? "border-foreground"
+                : "border-zinc-300 dark:border-zinc-700"
+            }`}
+          >
+            <input
+              type="radio"
+              name={choiceName}
+              value="keep"
+              checked={choice === "keep"}
+              onChange={() => setChoice("keep")}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium">Keep their ticket</span>
+              <span className="block text-sm text-zinc-600 dark:text-zinc-400">
+                Mark them as a previous loser and keep the ticket count.
+              </span>
+            </span>
+          </label>
+          <label
+            className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2 ${
+              choice === "revoke"
+                ? "border-foreground"
+                : "border-zinc-300 dark:border-zinc-700"
+            }`}
+          >
+            <input
+              type="radio"
+              name={choiceName}
+              value="revoke"
+              checked={choice === "revoke"}
+              onChange={() => setChoice("revoke")}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium">
+                Take the ticket away
+              </span>
+              <span className="block text-sm text-zinc-600 dark:text-zinc-400">
+                Undo the ticket from this entry. Someone with only 1 ticket is
+                removed.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeDialog}
+            className="h-9 cursor-pointer rounded-lg border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="h-9 cursor-pointer rounded-lg bg-foreground px-3 text-sm font-medium text-background transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground dark:hover:bg-zinc-300"
+          >
+            Move to losers
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+
+  return (
+    <form action={formAction} className="flex flex-col">
+      <input type="hidden" name="original_username" value={username} />
+      <input
+        ref={revokeInputRef}
+        type="hidden"
+        name="revoke_ticket"
+        defaultValue="false"
+      />
+      <button
+        type="button"
+        disabled={pending}
+        onClick={openDialog}
+        className={className}
+      >
+        {busy ? "Moving…" : "Move to losers"}
+      </button>
+      {mounted ? createPortal(dialog, document.body) : null}
+    </form>
+  );
+}
+
 export function EntrantControls({
   username,
   isLoser,
@@ -274,31 +449,23 @@ export function EntrantControls({
   const pending = deletePending || readdPending || returnPending;
   const error = deleteState.error || readdState.error || returnState.error;
 
-  function renderActions(layout: "inline" | "menu") {
-    const primaryClass =
-      primaryButtonClass + (layout === "menu" ? menuButtonClass : "");
-    const secondaryClass =
-      secondaryButtonClass + (layout === "menu" ? menuButtonClass : "");
-    const formClass = layout === "menu" ? "flex flex-col" : undefined;
+  function renderActions() {
+    const primaryClass = primaryButtonClass + menuButtonClass;
+    const secondaryClass = secondaryButtonClass + menuButtonClass;
 
     return (
       <>
         {returnToPool ? (
-          <form action={returnAction} className={formClass}>
-            <input type="hidden" name="original_username" value={username} />
-            <ConfirmButton
-              title="Move to losers"
-              description={`${username || "This entrant"} leaves this raffle and is marked as a previous loser. Their ticket count stays the same.`}
-              confirmLabel="Move to losers"
-              disabled={pending}
-              className={primaryClass}
-            >
-              {returnPending ? "Moving…" : "Move to losers"}
-            </ConfirmButton>
-          </form>
+          <MoveToLosersButton
+            username={username}
+            formAction={returnAction}
+            pending={pending}
+            busy={returnPending}
+            className={primaryClass}
+          />
         ) : null}
         {isLoser ? (
-          <form action={readdAction} className={formClass}>
+          <form action={readdAction} className="flex flex-col">
             <input type="hidden" name="original_username" value={username} />
             <button
               type="submit"
@@ -309,7 +476,7 @@ export function EntrantControls({
             </button>
           </form>
         ) : null}
-        <form action={deleteAction} className={formClass}>
+        <form action={deleteAction} className="flex flex-col">
           <input type="hidden" name="original_username" value={username} />
           <input type="hidden" name="is_loser" value={String(isLoser)} />
           <ConfirmButton
@@ -329,14 +496,9 @@ export function EntrantControls({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="hidden justify-end gap-2 sm:flex sm:flex-nowrap">
-        {renderActions("inline")}
-      </div>
-      <div className="sm:hidden">
-        <MobileActions username={username} disabled={pending}>
-          {renderActions("menu")}
-        </MobileActions>
-      </div>
+      <EntrantActions username={username} disabled={pending}>
+        {renderActions()}
+      </EntrantActions>
       {error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
