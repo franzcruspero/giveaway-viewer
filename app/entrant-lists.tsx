@@ -96,7 +96,7 @@ function EntrantSection({
               <colgroup>
                 <col className="@[46rem]:w-[23rem]" />
                 <col className="sm:w-28" />
-                <col className="sm:w-64 @[46rem]:w-auto" />
+                <col className="sm:w-36 @[46rem]:w-auto" />
               </colgroup>
               <thead>
                 <tr className="bg-zinc-100/60 dark:bg-zinc-800/60">
@@ -114,7 +114,7 @@ function EntrantSection({
                   </th>
                   <th
                     scope="col"
-                    className={`rounded-r-md py-2 pr-3 text-right font-medium sm:w-64 @[46rem]:w-auto ${stickyHeader}`}
+                    className={`rounded-r-md py-2 pr-3 text-right font-medium sm:w-36 @[46rem]:w-auto ${stickyHeader}`}
                   >
                     <span className="sr-only">Actions</span>
                   </th>
@@ -132,7 +132,7 @@ function EntrantSection({
                     <td className="py-2 pr-4 text-right tabular-nums whitespace-nowrap sm:w-28">
                       {row.pity_tickets.toLocaleString("en-US")}
                     </td>
-                    <td className="py-2 pr-3 sm:w-64 @[46rem]:w-auto">
+                    <td className="py-2 pr-3 sm:w-36 @[46rem]:w-auto">
                       <EntrantControls
                         username={row.username}
                         isLoser={row.is_loser}

@@ -406,7 +406,24 @@ function readdAllFixtureLosers(): WriteResult {
   return {};
 }
 
-function moveFixtureWinnerToLosers(username: string): WriteResult {
+function applyFixtureLoserMove(row: FixtureEntrant, revokeTicket: boolean) {
+  if (revokeTicket && row.pity_tickets <= 1) {
+    const index = fixtureEntrants.indexOf(row);
+    if (index >= 0) {
+      fixtureEntrants.splice(index, 1);
+    }
+    return;
+  }
+  if (revokeTicket) {
+    row.pity_tickets -= 1;
+  }
+  row.is_loser = true;
+}
+
+function moveFixtureWinnerToLosers(
+  username: string,
+  revokeTicket: boolean,
+): WriteResult {
   const name = username.trim().toLowerCase();
   if (!name) {
     return { error: "Entrant was not found." };
@@ -416,22 +433,20 @@ function moveFixtureWinnerToLosers(username: string): WriteResult {
   }
 
   const drawn = usernameList(fixtureRaffle.drawn_usernames);
+  const row = drawn.includes(name)
+    ? fixtureEntrants.find((entrant) => entrant.username === name)
+    : fixtureEntrants.find(
+        (entrant) => entrant.username === name && !entrant.is_loser,
+      );
+  if (!row || row.is_loser) {
+    return { error: "Entrant was not found." };
+  }
+
+  applyFixtureLoserMove(row, revokeTicket);
   if (!drawn.includes(name)) {
-    const row = fixtureEntrants.find(
-      (entrant) => entrant.username === name && !entrant.is_loser,
-    );
-    if (!row) {
-      return { error: "Entrant was not found." };
-    }
-    row.is_loser = true;
     return {};
   }
 
-  const row = fixtureEntrants.find((entrant) => entrant.username === name);
-  if (!row) {
-    return { error: "Entrant was not found." };
-  }
-  row.is_loser = true;
   fixtureRaffle.last_winners = usernameList(fixtureRaffle.last_winners).filter(
     (winner) => winner !== name,
   );
@@ -530,9 +545,72 @@ export async function setSubLuck(value: number): Promise<WriteResult> {
   return {};
 }
 
-export async function moveWinnerToLosers(username: string): Promise<WriteResult> {
+async function movePityRowToLosers(
+  supabase: SupabaseClient,
+  name: string,
+  revokeTicket: boolean,
+): Promise<WriteResult> {
+  const { data: row, error: readError } = await supabase
+    .from("pity_system")
+    .select("pity_tickets, is_loser")
+    .eq("username", name)
+    .maybeSingle();
+
+  if (readError) {
+    return writeError(readError);
+  }
+  if (!row || row.is_loser === true) {
+    return { error: "Entrant was not found." };
+  }
+
+  const tickets = Number(row.pity_tickets);
+  if (!Number.isFinite(tickets)) {
+    return { error: "Entrant was not found." };
+  }
+
+  if (revokeTicket && tickets <= 1) {
+    const { data: deleted, error } = await supabase
+      .from("pity_system")
+      .delete()
+      .eq("username", name)
+      .eq("is_loser", false)
+      .select("username");
+
+    if (error) {
+      return writeError(error);
+    }
+    if (!deleted?.length) {
+      return { error: "Entrant was not found." };
+    }
+    return {};
+  }
+
+  const { data: moved, error } = await supabase
+    .from("pity_system")
+    .update(
+      revokeTicket
+        ? { pity_tickets: tickets - 1, is_loser: true }
+        : { is_loser: true },
+    )
+    .eq("username", name)
+    .eq("is_loser", false)
+    .select("username");
+
+  if (error) {
+    return writeError(error);
+  }
+  if (!moved?.length) {
+    return { error: "Entrant was not found." };
+  }
+  return {};
+}
+
+export async function moveWinnerToLosers(
+  username: string,
+  revokeTicket = false,
+): Promise<WriteResult> {
   if (usingFixtures()) {
-    return moveFixtureWinnerToLosers(username);
+    return moveFixtureWinnerToLosers(username, revokeTicket);
   }
 
   const supabase = createSupabase();
@@ -562,34 +640,12 @@ export async function moveWinnerToLosers(username: string): Promise<WriteResult>
   }
 
   const drawn = usernameList(raffle.drawn_usernames);
+  const moved = await movePityRowToLosers(supabase, name, revokeTicket);
+  if (moved.error) {
+    return moved;
+  }
   if (!drawn.includes(name)) {
-    const { data: moved, error: loserError } = await supabase
-      .from("pity_system")
-      .update({ is_loser: true })
-      .eq("username", name)
-      .eq("is_loser", false)
-      .select("username");
-
-    if (loserError) {
-      return writeError(loserError);
-    }
-    if (!moved?.length) {
-      return { error: "Entrant was not found." };
-    }
     return {};
-  }
-
-  const { data: moved, error: loserError } = await supabase
-    .from("pity_system")
-    .update({ is_loser: true })
-    .eq("username", name)
-    .select("username");
-
-  if (loserError) {
-    return writeError(loserError);
-  }
-  if (!moved?.length) {
-    return { error: "Entrant was not found." };
   }
 
   const { data, error } = await supabase

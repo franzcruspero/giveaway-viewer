@@ -15,6 +15,7 @@ export function ClearAllButton() {
         title="Clear all entrants"
         description="This permanently removes every entrant from the pity system — active, previous losers, and drawn winners. This cannot be undone."
         confirmLabel="Clear all"
+        confirmText="clear all"
         tone="danger"
         disabled={pending}
         className="h-9 rounded-lg border border-red-300 px-3 text-sm text-red-600 cursor-pointer transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 dark:disabled:hover:bg-transparent"

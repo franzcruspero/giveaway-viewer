@@ -15,6 +15,7 @@ type ConfirmButtonProps = {
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
+  confirmText?: string;
   tone?: "default" | "danger";
   disabled?: boolean;
   className?: string;
@@ -26,6 +27,7 @@ export function ConfirmButton({
   description,
   confirmLabel,
   cancelLabel = "Cancel",
+  confirmText,
   tone = "default",
   disabled = false,
   className,
@@ -33,10 +35,22 @@ export function ConfirmButton({
 }: ConfirmButtonProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const confirmLock = useRef(false);
   const titleId = useId();
   const descriptionId = useId();
+  const confirmInputId = useId();
   const [mounted, setMounted] = useState(false);
+  const [typed, setTyped] = useState("");
+
+  function matchesPhrase(value: string) {
+    return (
+      confirmText !== undefined &&
+      value.trim().toLowerCase() === confirmText.toLowerCase()
+    );
+  }
+
+  const phraseMatches = confirmText === undefined || matchesPhrase(typed);
 
   useEffect(() => {
     setMounted(true);
@@ -44,7 +58,9 @@ export function ConfirmButton({
 
   function openDialog(event: MouseEvent<HTMLButtonElement>) {
     formRef.current = event.currentTarget.form;
+    setTyped("");
     dialogRef.current?.showModal();
+    inputRef.current?.focus();
   }
 
   function closeDialog() {
@@ -53,6 +69,9 @@ export function ConfirmButton({
 
   function confirm() {
     if (confirmLock.current) {
+      return;
+    }
+    if (confirmText !== undefined && !matchesPhrase(typed)) {
       return;
     }
     confirmLock.current = true;
@@ -75,6 +94,7 @@ export function ConfirmButton({
       }}
       onClose={() => {
         confirmLock.current = false;
+        setTyped("");
       }}
     >
       <div className="flex flex-col gap-5 p-5">
@@ -89,6 +109,30 @@ export function ConfirmButton({
             {description}
           </p>
         </div>
+        {confirmText ? (
+          <label htmlFor={confirmInputId} className="flex flex-col gap-2 text-sm">
+            <span className="text-zinc-600 dark:text-zinc-400">
+              Type{" "}
+              <span className="font-medium text-foreground">{confirmText}</span>{" "}
+              to confirm.
+            </span>
+            <input
+              ref={inputRef}
+              id={confirmInputId}
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && matchesPhrase(typed)) {
+                  event.preventDefault();
+                  confirm();
+                }
+              }}
+              autoComplete="off"
+              spellCheck={false}
+              className="h-11 rounded-lg border border-zinc-300 bg-transparent px-3 outline-none focus:border-zinc-500 dark:border-zinc-700"
+            />
+          </label>
+        ) : null}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -100,10 +144,11 @@ export function ConfirmButton({
           <button
             type="button"
             onClick={confirm}
+            disabled={!phraseMatches}
             className={
               tone === "danger"
-                ? "h-9 cursor-pointer rounded-lg bg-red-600 px-3 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                : "h-9 cursor-pointer rounded-lg bg-foreground px-3 text-sm font-medium text-background transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground dark:hover:bg-zinc-300"
+                ? "h-9 cursor-pointer rounded-lg bg-red-600 px-3 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-red-600"
+                : "h-9 cursor-pointer rounded-lg bg-foreground px-3 text-sm font-medium text-background transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-foreground dark:hover:bg-zinc-300 dark:disabled:hover:bg-foreground"
             }
           >
             {confirmLabel}
