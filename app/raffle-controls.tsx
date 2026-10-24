@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { useActionState, useEffect, useState } from "react";
-import { endRaffle, updateSubLuck, type EntrantActionState } from "./actions";
+import { endRaffle, resetEntries, updateSubLuck, type EntrantActionState } from "./actions";
 import { ConfirmButton } from "./confirm-button";
 import type { RaffleStatus } from "@/lib/supabase";
 
@@ -48,6 +48,10 @@ export function RaffleControls({
   }
   const [endState, endAction, endPending] = useActionState(
     endRaffle,
+    initialState,
+  );
+  const [resetState, resetAction, resetPending] = useActionState(
+    resetEntries,
     initialState,
   );
   const [luckState, luckAction, luckPending] = useActionState(
@@ -137,31 +141,50 @@ export function RaffleControls({
           </button>
         </form>
       ) : (
-        <form action={endAction} className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm">
-              {statusLabel}
-              <span className="text-zinc-600 dark:text-zinc-400">
-                {" "}
-                · {winnerLabel} · Subscriber luck {luck.saved}×
-              </span>
-            </p>
+        <>
+          <form action={endAction} className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm">
+                {statusLabel}
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {" "}
+                  · {winnerLabel} · Subscriber luck {luck.saved}×
+                </span>
+              </p>
+              <ConfirmButton
+                title="End the raffle"
+                description="Drawn winners are removed and everyone else is marked as a loser."
+                confirmLabel="End raffle"
+                tone="danger"
+                disabled={endPending}
+                className="h-9 rounded-lg border border-zinc-300 px-3 text-sm cursor-pointer transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent dark:border-zinc-700 dark:hover:bg-zinc-800 dark:disabled:hover:bg-transparent"
+              >
+                {endPending ? "Ending…" : "End raffle"}
+              </ConfirmButton>
+            </div>
+          </form>
+          <form action={resetAction}>
             <ConfirmButton
-              title="End the raffle"
-              description="Drawn winners are removed and everyone else is marked as a loser."
-              confirmLabel="End raffle"
+              title="Reset entries"
+              description="New entrants with 1 ticket are removed. Returning entrants have 1 ticket removed and are moved back to previous losers. The raffle is reset to ended."
+              confirmLabel="Reset entries"
               tone="danger"
-              disabled={endPending}
+              disabled={resetPending}
               className="h-9 rounded-lg border border-zinc-300 px-3 text-sm cursor-pointer transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent dark:border-zinc-700 dark:hover:bg-zinc-800 dark:disabled:hover:bg-transparent"
             >
-              {endPending ? "Ending…" : "End raffle"}
+              {resetPending ? "Resetting…" : "Reset entries"}
             </ConfirmButton>
-          </div>
-        </form>
+          </form>
+        </>
       )}
       {endState.error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {endState.error}
+        </p>
+      ) : null}
+      {resetState.error ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {resetState.error}
         </p>
       ) : null}
       {luckState.error ? (
