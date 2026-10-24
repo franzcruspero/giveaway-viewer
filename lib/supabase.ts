@@ -619,6 +619,23 @@ function clearFixtureEntrants(): WriteResult {
   return {};
 }
 
+function resetFixtureRaffleEntries(): WriteResult {
+  for (let i = fixtureEntrants.length - 1; i >= 0; i--) {
+    const row = fixtureEntrants[i];
+    if (row.is_loser) continue;
+    if (row.pity_tickets === 1) {
+      fixtureEntrants.splice(i, 1);
+    } else {
+      row.pity_tickets -= 1;
+      row.is_loser = true;
+    }
+  }
+  fixtureRaffle.last_winners = [];
+  fixtureRaffle.drawn_usernames = [];
+  fixtureRaffle.status = "ended";
+  return {};
+}
+
 export async function clearAllEntrants(): Promise<WriteResult> {
   if (usingFixtures()) {
     return clearFixtureEntrants();
@@ -646,6 +663,23 @@ export async function clearAllEntrants(): Promise<WriteResult> {
   }
   if (!data?.length) {
     return { error: "Could not update the raffle." };
+  }
+  return {};
+}
+
+export async function resetRaffleEntries(): Promise<WriteResult> {
+  if (usingFixtures()) {
+    return resetFixtureRaffleEntries();
+  }
+
+  const supabase = createSupabase();
+  if ("error" in supabase) {
+    return supabase;
+  }
+
+  const { error } = await supabase.rpc("reset_raffle_entries");
+  if (error) {
+    return writeError(error);
   }
   return {};
 }

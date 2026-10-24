@@ -82,6 +82,22 @@ export const handler = async (event) => {
     }
 
     try {
+        const { data: current, error: readError } = await supabase
+            .from('raffle_state')
+            .select('status')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (readError) {
+            throw readError;
+        }
+        if (!current) {
+            return chat('Could not start the raffle.');
+        }
+        if (current.status !== 'ended') {
+            return chat('End the current raffle first.');
+        }
+
         const { data, error } = await supabase
             .from('raffle_state')
             .update({
@@ -92,6 +108,7 @@ export const handler = async (event) => {
                 drawn_usernames: [],
             })
             .eq('id', 1)
+            .eq('status', 'ended')
             .select('winner_count, title');
 
         if (error) {

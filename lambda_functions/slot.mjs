@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { timingSafeEqual } from 'crypto';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const SUBSCRIBER_LEVELS = new Set([250, 400, 500]);
+const SUBSCRIBER_LEVELS = new Set([250, 400, 500, 1000]);
 
 function isSubscriberLevel(value) {
     const level = Number(value);
