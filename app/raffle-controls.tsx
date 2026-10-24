@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { useActionState, useEffect, useState } from "react";
 import { endRaffle, resetEntries, updateSubLuck, type EntrantActionState } from "./actions";
+import { ClearAllButton } from "./clear-all-button";
 import { ConfirmButton } from "./confirm-button";
 import type { RaffleStatus } from "@/lib/supabase";
 
@@ -192,6 +193,9 @@ export function RaffleControls({
           {luckState.error}
         </p>
       ) : null}
+      <div className="mt-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        <ClearAllButton />
+      </div>
     </div>
   );
 }
