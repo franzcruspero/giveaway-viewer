@@ -667,6 +667,87 @@ export async function clearAllEntrants(): Promise<WriteResult> {
   return {};
 }
 
+async function loadCurrentEntrants(
+  supabase: SupabaseClient,
+): Promise<{ rows: { username: string; pity_tickets: number }[] } | WriteResult> {
+  const pageSize = 1000;
+  const rows: { username: string; pity_tickets: number }[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("pity_system")
+      .select("username, pity_tickets")
+      .eq("is_loser", false)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      return writeError(error);
+    }
+
+    for (const row of data ?? []) {
+      const username = String(row.username ?? "").trim();
+      const tickets = Number(row.pity_tickets);
+      if (!username || !Number.isFinite(tickets)) {
+        continue;
+      }
+      rows.push({ username, pity_tickets: tickets });
+    }
+
+    if (!data || data.length < pageSize) {
+      return { rows };
+    }
+  }
+}
+
+async function deleteFreshEntrants(
+  supabase: SupabaseClient,
+  usernames: string[],
+): Promise<WriteResult> {
+  const chunkSize = 100;
+
+  for (let from = 0; from < usernames.length; from += chunkSize) {
+    const { error } = await supabase
+      .from("pity_system")
+      .delete()
+      .in("username", usernames.slice(from, from + chunkSize))
+      .eq("is_loser", false)
+      .eq("pity_tickets", 1);
+
+    if (error) {
+      return writeError(error);
+    }
+  }
+
+  return {};
+}
+
+async function returnEntrantsToLosers(
+  supabase: SupabaseClient,
+  rows: { username: string; pity_tickets: number }[],
+): Promise<WriteResult> {
+  const batchSize = 20;
+
+  for (let from = 0; from < rows.length; from += batchSize) {
+    const results = await Promise.all(
+      rows.slice(from, from + batchSize).map((row) =>
+        supabase
+          .from("pity_system")
+          .update({ pity_tickets: row.pity_tickets - 1, is_loser: true })
+          .eq("username", row.username)
+          .eq("is_loser", false),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        return writeError(result.error);
+      }
+    }
+  }
+
+  return {};
+}
+
 export async function resetRaffleEntries(): Promise<WriteResult> {
   if (usingFixtures()) {
     return resetFixtureRaffleEntries();
@@ -677,9 +758,41 @@ export async function resetRaffleEntries(): Promise<WriteResult> {
     return supabase;
   }
 
-  const { error } = await supabase.rpc("reset_raffle_entries");
+  const loaded = await loadCurrentEntrants(supabase);
+  if (!("rows" in loaded)) {
+    return loaded;
+  }
+
+  const fresh = loaded.rows
+    .filter((row) => row.pity_tickets === 1)
+    .map((row) => row.username);
+  const returning = loaded.rows.filter((row) => row.pity_tickets > 1);
+
+  const deleted = await deleteFreshEntrants(supabase, fresh);
+  if (deleted.error) {
+    return deleted;
+  }
+
+  const returned = await returnEntrantsToLosers(supabase, returning);
+  if (returned.error) {
+    return returned;
+  }
+
+  const { data, error } = await supabase
+    .from("raffle_state")
+    .update({
+      status: "ended",
+      last_winners: [],
+      drawn_usernames: [],
+    })
+    .eq("id", 1)
+    .select("id");
+
   if (error) {
-    return writeError(error);
+    return raffleWriteError(error);
+  }
+  if (!data?.length) {
+    return { error: "Could not update the raffle." };
   }
   return {};
 }
