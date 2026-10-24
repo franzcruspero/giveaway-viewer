@@ -87,28 +87,34 @@ function EntrantSection({
           <div
             className={
               scrollable
-                ? "max-h-96 overflow-auto overscroll-y-contain"
-                : "overflow-x-auto"
+                ? "@container max-h-96 overflow-auto overscroll-y-contain [scrollbar-gutter:stable]"
+                : "@container overflow-x-auto [scrollbar-gutter:stable]"
             }
           >
-            <table className="w-full border-separate border-spacing-0 text-left text-sm">
+            {/* 23rem fits a 25-character Twitch username; narrower cards keep the old flexible column. */}
+            <table className="w-full border-separate border-spacing-0 text-left text-sm sm:table-fixed">
+              <colgroup>
+                <col className="@[46rem]:w-[23rem]" />
+                <col className="sm:w-28" />
+                <col className="sm:w-64 @[46rem]:w-auto" />
+              </colgroup>
               <thead>
                 <tr className="bg-zinc-100/60 dark:bg-zinc-800/60">
                   <th
                     scope="col"
-                    className={`rounded-l-md py-2 pr-4 pl-3 font-medium ${stickyHeader}`}
+                    className={`rounded-l-md py-2 pr-4 pl-3 font-medium @[46rem]:w-[23rem] ${stickyHeader}`}
                   >
                     Username
                   </th>
                   <th
                     scope="col"
-                    className={`py-2 pr-4 text-right font-medium ${stickyHeader}`}
+                    className={`py-2 pr-4 text-right font-medium whitespace-nowrap sm:w-28 ${stickyHeader}`}
                   >
                     Tickets
                   </th>
                   <th
                     scope="col"
-                    className={`rounded-r-md py-2 pr-3 text-right font-medium ${stickyHeader}`}
+                    className={`rounded-r-md py-2 pr-3 text-right font-medium sm:w-64 @[46rem]:w-auto ${stickyHeader}`}
                   >
                     <span className="sr-only">Actions</span>
                   </th>
@@ -120,11 +126,13 @@ function EntrantSection({
                     key={`${row.username}-${index}`}
                     className="[&:not(:last-child)>td]:border-b [&:not(:last-child)>td]:border-zinc-100 dark:[&:not(:last-child)>td]:border-zinc-800/80"
                   >
-                    <td className="py-2 pr-4 pl-3">{row.username || "—"}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="py-2 pr-4 pl-3 break-words @[46rem]:w-[23rem]">
+                      {row.username || "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums whitespace-nowrap sm:w-28">
                       {row.pity_tickets.toLocaleString("en-US")}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2 pr-3 sm:w-64 @[46rem]:w-auto">
                       <EntrantControls
                         username={row.username}
                         isLoser={row.is_loser}

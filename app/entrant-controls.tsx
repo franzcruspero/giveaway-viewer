@@ -37,7 +37,7 @@ export function EntrantControls({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">
         {returnToPool ? (
           <form action={returnAction}>
             <input type="hidden" name="original_username" value={username} />
