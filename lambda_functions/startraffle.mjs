@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { timingSafeEqual } from 'crypto';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const MAX_WINNERS = 50;
 const MAX_TITLE = 100;
 
 function chat(body) {
@@ -28,7 +27,7 @@ function winnerCount(value) {
     if (!/^[1-9]\d*$/.test(trimmed)) {
         return null;
     }
-    return Math.min(Number(trimmed), MAX_WINNERS);
+    return Number(trimmed);
 }
 
 function cleanTitle(value) {
@@ -47,7 +46,7 @@ function parseQuery(query) {
     }
 
     return {
-        count: Math.min(Number(match[1]), MAX_WINNERS),
+        count: Number(match[1]),
         title: cleanTitle(match[2]),
     };
 }
@@ -120,7 +119,7 @@ export const handler = async (event) => {
 
         const label = args.count === 1 ? '1 winner' : `${args.count} winners`;
         if (data[0].title) {
-            return chat(`Raffle is open: ${data[0].title}. Drawing ${label}.`);
+            return chat(`Raffle is open: ${data[0].title}. Drawing ${label}. !enter to join the giveaway.`);
         }
         return chat(`Raffle is open. Drawing ${label}.`);
     } catch (err) {
