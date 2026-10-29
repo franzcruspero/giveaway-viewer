@@ -2,7 +2,24 @@ import { createClient } from '@supabase/supabase-js';
 import { randomInt, timingSafeEqual } from 'crypto';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const MAX_WINNERS = 50;
+const DEFAULT_MAX_DRAW_LIMIT = 50;
+
+function readMaxDrawLimit() {
+    const raw = process.env.MAX_DRAW_LIMIT;
+    if (raw == null || String(raw).trim() === '') {
+        return DEFAULT_MAX_DRAW_LIMIT;
+    }
+    const trimmed = String(raw).trim();
+    if (!/^[1-9]\d*$/.test(trimmed)) {
+        console.warn(
+            `MAX_DRAW_LIMIT "${trimmed}" is not a positive whole number; using ${DEFAULT_MAX_DRAW_LIMIT}.`,
+        );
+        return DEFAULT_MAX_DRAW_LIMIT;
+    }
+    return Number(trimmed);
+}
+
+const MAX_WINNERS = readMaxDrawLimit();
 
 function chat(statusCode, body) {
     return {
@@ -25,12 +42,12 @@ function winnerCount(value) {
     }
     const trimmed = String(value).trim();
     if (trimmed.toLowerCase() === 'all') {
-        return undefined;
+        return 'all';
     }
     if (!/^[1-9]\d*$/.test(trimmed)) {
         return null;
     }
-    return Math.min(Number(trimmed), MAX_WINNERS);
+    return Number(trimmed);
 }
 
 function usernameList(value) {
@@ -66,7 +83,7 @@ async function loadRaffle() {
 
     return {
         status: data.status,
-        winnerCount: Math.min(count, MAX_WINNERS),
+        winnerCount: count,
         lastWinners: usernameList(data.last_winners),
         drawnUsernames: usernameList(data.drawn_usernames),
         subLuck,
@@ -164,7 +181,10 @@ export const handler = async (event) => {
             return chat(200, 'The giveaway has ended.');
         }
 
-        const count = requested ?? raffle.winnerCount;
+        const count = requested === 'all' || requested == null ? raffle.winnerCount : requested;
+        if (requested !== 'all' && count > MAX_WINNERS) {
+            return chat(200, `You can only draw up to ${MAX_WINNERS} of winners`);
+        }
         const rows = await loadEntries();
         if (!rows || rows.length === 0) {
             await saveRaffle({
