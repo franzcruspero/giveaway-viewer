@@ -20,6 +20,14 @@ export type RaffleState = {
   subLuck: number;
 };
 
+export type ActionLogEntry = {
+  id: number;
+  created_at: string;
+  action_type: string;
+  entrant_username: string;
+  detail: string;
+};
+
 const MAX_WINNERS = 50;
 
 type FixtureEntrant = {
@@ -64,6 +72,9 @@ const fixtureRaffle = {
   drawn_usernames: ["nova", "pixel"],
   sub_luck: 3,
 };
+
+let fixtureActionLogs: ActionLogEntry[] = [];
+let fixtureLogIdCounter = 1;
 
 function usingFixtures(): boolean {
   return !process.env.SUPABASE_URL || !process.env.SUPABASE_KEY;
@@ -543,6 +554,107 @@ export async function setSubLuck(value: number): Promise<WriteResult> {
     return { error: "Could not update the raffle." };
   }
   return {};
+}
+
+export async function updateTicketCount(
+  username: string,
+  tickets: number,
+): Promise<WriteResult> {
+  if (!Number.isInteger(tickets) || tickets < 1) {
+    return { error: "Ticket count must be a positive whole number." };
+  }
+  if (usingFixtures()) {
+    const row = fixtureEntrants.find(
+      (entrant) => entrant.username.toLowerCase() === username.toLowerCase(),
+    );
+    if (!row) {
+      return { error: "Entrant was not found." };
+    }
+    row.pity_tickets = tickets;
+    return {};
+  }
+
+  const supabase = createSupabase();
+  if ("error" in supabase) {
+    return supabase;
+  }
+
+  const name = username.trim();
+  if (!name) {
+    return { error: "Entrant was not found." };
+  }
+
+  const { data, error } = await supabase
+    .from("pity_system")
+    .update({ pity_tickets: tickets })
+    .eq("username", name)
+    .select("username");
+
+  if (error) {
+    return writeError(error);
+  }
+  if (!data?.length) {
+    return { error: "Entrant was not found." };
+  }
+  return {};
+}
+
+export async function logAction(
+  actionType: string,
+  entrantUsername: string,
+  detail: string,
+): Promise<void> {
+  if (usingFixtures()) {
+    fixtureActionLogs.unshift({
+      id: fixtureLogIdCounter++,
+      created_at: new Date().toISOString(),
+      action_type: actionType,
+      entrant_username: entrantUsername,
+      detail,
+    });
+    return;
+  }
+
+  const supabase = createSupabase();
+  if ("error" in supabase) {
+    console.error("action_logs insert failed: supabase not configured");
+    return;
+  }
+
+  const { error } = await supabase.from("action_logs").insert({
+    action_type: actionType,
+    entrant_username: entrantUsername,
+    detail,
+  });
+
+  if (error) {
+    console.error("action_logs insert failed", error.message);
+  }
+}
+
+export async function loadActionLogs(): Promise<ActionLogEntry[]> {
+  if (usingFixtures()) {
+    return fixtureActionLogs;
+  }
+
+  const supabase = createSupabase();
+  if ("error" in supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("action_logs")
+    .select("id, created_at, action_type, entrant_username, detail")
+    .order("created_at", { ascending: false })
+    .limit(50)
+    .returns<ActionLogEntry[]>();
+
+  if (error) {
+    console.error("action_logs query failed", error.message);
+    return [];
+  }
+
+  return data ?? [];
 }
 
 async function movePityRowToLosers(
