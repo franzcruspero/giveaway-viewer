@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { logout } from "./actions";
 import { ActionLogButton } from "./action-log";
 import { ClearAllButton } from "./clear-all-button";
@@ -40,6 +41,7 @@ export default function Home() {
 }
 
 async function AuthButtons() {
+  await connection();
   const authed = await isAuthenticated();
   if (!authed) {
     return null;
@@ -63,6 +65,7 @@ async function AuthButtons() {
 }
 
 async function EntrantView() {
+  await connection();
   const authed = await isAuthenticated();
   if (!authed) {
     return <LoginForm />;

@@ -116,6 +116,13 @@ function usingFixtures(): boolean {
   return !process.env.SUPABASE_URL || !process.env.SUPABASE_KEY;
 }
 
+function logQueryFailure(table: string, message: string) {
+  if (/During prerendering/i.test(message)) {
+    return;
+  }
+  console.error(`${table} query failed`, message);
+}
+
 type PityRowRecord = {
   username: string | null;
   pity_tickets: number | string | null;
@@ -187,7 +194,7 @@ export async function loadPityRows(): Promise<
     .returns<PityRowRecord[]>();
 
   if (error) {
-    console.error("pity_system query failed", error.message);
+    logQueryFailure("pity_system", error.message);
     return { error: "Could not load entrants." };
   }
 
@@ -541,7 +548,7 @@ export async function loadRaffleState(): Promise<
     .maybeSingle();
 
   if (error) {
-    console.error("raffle_state query failed", error.message);
+    logQueryFailure("raffle_state", error.message);
     return { error: "Could not load the raffle." };
   }
   if (!data) {
@@ -686,7 +693,7 @@ export async function loadActionLogs(): Promise<ActionLogEntry[]> {
     .returns<ActionLogEntry[]>();
 
   if (error) {
-    console.error("action_logs query failed", error.message);
+    logQueryFailure("action_logs", error.message);
     return [];
   }
 

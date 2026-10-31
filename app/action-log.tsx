@@ -41,8 +41,6 @@ export function ActionLogButton({ entries }: { entries: ActionLogEntry[] }) {
     dialogRef.current?.close();
   }
 
-  const badge = entries.length;
-
   return (
     <>
       <button
@@ -50,7 +48,7 @@ export function ActionLogButton({ entries }: { entries: ActionLogEntry[] }) {
         onClick={openModal}
         className="h-9 rounded-lg border border-zinc-300 px-3 text-sm cursor-pointer transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
       >
-        Action log{badge > 0 ? ` (${badge})` : ""}
+        Action log
       </button>
 
       <dialog
