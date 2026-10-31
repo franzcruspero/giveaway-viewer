@@ -1,5 +1,3 @@
-"use cache";
-
 import { Suspense } from "react";
 import { logout } from "./actions";
 import { ActionLogButton } from "./action-log";
@@ -12,6 +10,8 @@ import { ThemeToggle } from "./theme-toggle";
 import { isAuthenticated } from "@/lib/auth";
 import { loadPityRows, loadRaffleState, loadActionLogs } from "@/lib/supabase";
 import type { ActionLogEntry } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
 
 
 export default async function Home() {
