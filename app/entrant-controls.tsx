@@ -266,7 +266,7 @@ function EditTicketsButton({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const hiddenTicketRef = useRef<HTMLInputElement>(null);
   const confirmLock = useRef(false);
   const titleId = useId();
   const descriptionId = useId();
@@ -293,8 +293,8 @@ function EditTicketsButton({
       return;
     }
     confirmLock.current = true;
-    if (inputRef.current) {
-      inputRef.current.value = ticketCount;
+    if (hiddenTicketRef.current) {
+      hiddenTicketRef.current.value = ticketCount;
     }
     const form = formRef.current;
     closeDialog();
@@ -343,7 +343,6 @@ function EditTicketsButton({
           </label>
           <input
             id="ticket_count_input"
-            ref={inputRef}
             type="number"
             min="1"
             max="9999"
@@ -375,7 +374,7 @@ function EditTicketsButton({
     <form action={formAction} className="flex flex-col">
       <input type="hidden" name="original_username" value={username} />
       <input
-        ref={inputRef}
+        ref={hiddenTicketRef}
         type="hidden"
         name="ticket_count"
         defaultValue={String(currentTickets)}
