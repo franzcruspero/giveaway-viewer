@@ -137,6 +137,7 @@ function EntrantSection({
                         username={row.username}
                         isLoser={row.is_loser}
                         returnToPool={moveToLosers}
+                        tickets={row.pity_tickets}
                       />
                     </td>
                   </tr>

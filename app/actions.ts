@@ -17,6 +17,8 @@ import {
   setSubLuck,
   clearAllEntrants as clearAllEntrantsFromDb,
   resetRaffleEntries,
+  updateTicketCount,
+  logAction,
 } from "@/lib/supabase";
 
 export type LoginState = {
@@ -77,6 +79,7 @@ export async function deleteEntrant(
     return result;
   }
 
+  await logAction("delete", username, "Removed from raffle");
   revalidatePath("/");
   return {};
 }
@@ -100,6 +103,7 @@ export async function addPreviousEntrant(
     return result;
   }
 
+  await logAction("readd", username, "Added back to raffle");
   revalidatePath("/");
   return {};
 }
@@ -139,6 +143,10 @@ export async function returnDrawnWinner(
     return result;
   }
 
+  const detail = revokeTicket
+    ? "Moved to losers (ticket revoked)"
+    : "Moved to losers (ticket kept)";
+  await logAction("move_to_losers", username, detail);
   revalidatePath("/");
   return {};
 }
@@ -210,6 +218,39 @@ export async function resetEntries(): Promise<EntrantActionState> {
     return result;
   }
 
+  revalidatePath("/");
+  return {};
+}
+
+export async function editTicketQuantity(
+  _previous: EntrantActionState,
+  formData: FormData,
+): Promise<EntrantActionState> {
+  const denied = await requireEditor();
+  if (denied) {
+    return denied;
+  }
+
+  const username = String(formData.get("original_username") ?? "").trim();
+  if (!username) {
+    return { error: "Entrant was not found." };
+  }
+
+  const count = Number(formData.get("ticket_count"));
+  if (!Number.isInteger(count) || count < 1 || count > 9999) {
+    return { error: "Ticket count must be a whole number between 1 and 9999." };
+  }
+
+  const result = await updateTicketCount(username, count);
+  if (result.error) {
+    return result;
+  }
+
+  await logAction(
+    "edit_tickets",
+    username,
+    `Tickets changed to ${count}`,
+  );
   revalidatePath("/");
   return {};
 }

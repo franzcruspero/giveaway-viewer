@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { logout } from "./actions";
+import { ActionLogButton } from "./action-log";
 import { ClearAllButton } from "./clear-all-button";
 import { EntrantLists } from "./entrant-lists";
 import { LoginForm } from "./login-form";
@@ -7,10 +8,13 @@ import { RaffleControls } from "./raffle-controls";
 import { RealtimeListener } from "./realtime-listener";
 import { ThemeToggle } from "./theme-toggle";
 import { isAuthenticated } from "@/lib/auth";
-import { loadPityRows, loadRaffleState } from "@/lib/supabase";
+import { loadPityRows, loadRaffleState, loadActionLogs } from "@/lib/supabase";
+import type { ActionLogEntry } from "@/lib/supabase";
 
 
-export default function Home() {
+export default async function Home() {
+  const logs = await loadActionLogs();
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -24,7 +28,7 @@ export default function Home() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Suspense fallback={null}>
-            <AuthButtons />
+            <AuthButtons logs={logs} />
           </Suspense>
           <ThemeToggle />
         </div>
@@ -38,21 +42,24 @@ export default function Home() {
   );
 }
 
-async function AuthButtons() {
+async function AuthButtons({ logs }: { logs: ActionLogEntry[] }) {
   const authed = await isAuthenticated();
   if (!authed) {
     return null;
   }
 
   return (
-    <form action={logout}>
-      <button
-        type="submit"
-        className="h-9 rounded-lg border border-zinc-300 px-3 text-sm cursor-pointer transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-      >
-        Log out
-      </button>
-    </form>
+    <div className="flex items-center gap-2">
+      <ActionLogButton entries={logs} />
+      <form action={logout}>
+        <button
+          type="submit"
+          className="h-9 rounded-lg border border-zinc-300 px-3 text-sm cursor-pointer transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        >
+          Log out
+        </button>
+      </form>
+    </div>
   );
 }
 

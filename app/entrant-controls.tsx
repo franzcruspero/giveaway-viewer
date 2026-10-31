@@ -14,6 +14,7 @@ import {
   addPreviousEntrant,
   deleteEntrant,
   returnDrawnWinner,
+  editTicketQuantity,
   type EntrantActionState,
 } from "./actions";
 import { ConfirmButton } from "./confirm-button";
@@ -248,6 +249,150 @@ function EntrantActions({
 
 type TicketChoice = "keep" | "revoke";
 
+function EditTicketsButton({
+  username,
+  currentTickets,
+  formAction,
+  pending,
+  busy,
+  className,
+}: {
+  username: string;
+  currentTickets: number;
+  formAction: (formData: FormData) => void;
+  pending: boolean;
+  busy: boolean;
+  className: string;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const confirmLock = useRef(false);
+  const titleId = useId();
+  const descriptionId = useId();
+  const [mounted, setMounted] = useState(false);
+  const [ticketCount, setTicketCount] = useState(String(currentTickets));
+  const name = username || "This entrant";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  function openDialog(event: MouseEvent<HTMLButtonElement>) {
+    formRef.current = event.currentTarget.form;
+    setTicketCount(String(currentTickets));
+    dialogRef.current?.showModal();
+  }
+
+  function closeDialog() {
+    dialogRef.current?.close();
+  }
+
+  function confirm() {
+    if (confirmLock.current) {
+      return;
+    }
+    confirmLock.current = true;
+    if (inputRef.current) {
+      inputRef.current.value = ticketCount;
+    }
+    const form = formRef.current;
+    closeDialog();
+    form?.requestSubmit();
+  }
+
+  const dialog = (
+    <dialog
+      ref={dialogRef}
+      role="dialog"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      className="confirm-dialog m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-background p-0 text-left text-foreground shadow-xl backdrop:bg-zinc-950/40 dark:border-zinc-800"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          closeDialog();
+        }
+      }}
+      onClose={() => {
+        confirmLock.current = false;
+        setTicketCount(String(currentTickets));
+      }}
+    >
+      <form
+        className="flex flex-col gap-5 p-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          confirm();
+        }}
+      >
+        <div className="flex flex-col gap-2">
+          <h2 id={titleId} className="text-base font-medium">
+            Edit tickets
+          </h2>
+          <p
+            id={descriptionId}
+            className="text-sm text-zinc-600 dark:text-zinc-400"
+          >
+            Manually set the ticket count for @{name}. This directly overrides
+            their current total.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="ticket_count_input" className="text-sm font-medium">
+            Ticket count
+          </label>
+          <input
+            id="ticket_count_input"
+            ref={inputRef}
+            type="number"
+            min="1"
+            max="9999"
+            value={ticketCount}
+            onChange={(event) => setTicketCount(event.target.value)}
+            className="h-9 rounded-lg border border-zinc-300 px-3 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-400"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeDialog}
+            className="h-9 cursor-pointer rounded-lg border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="h-9 cursor-pointer rounded-lg bg-foreground px-3 text-sm font-medium text-background transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground dark:hover:bg-zinc-300"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+
+  return (
+    <form action={formAction} className="flex flex-col">
+      <input type="hidden" name="original_username" value={username} />
+      <input
+        ref={inputRef}
+        type="hidden"
+        name="ticket_count"
+        defaultValue={String(currentTickets)}
+      />
+      <button
+        type="button"
+        disabled={pending}
+        onClick={openDialog}
+        className={className}
+      >
+        {busy ? "Saving…" : "Edit tickets"}
+      </button>
+      {mounted ? createPortal(dialog, document.body) : null}
+    </form>
+  );
+}
+
 function MoveToLosersButton({
   username,
   formAction,
@@ -429,10 +574,12 @@ export function EntrantControls({
   username,
   isLoser,
   returnToPool = false,
+  tickets = 0,
 }: {
   username: string;
   isLoser: boolean;
   returnToPool?: boolean;
+  tickets?: number;
 }) {
   const [deleteState, deleteAction, deletePending] = useActionState(
     deleteEntrant,
@@ -446,8 +593,12 @@ export function EntrantControls({
     returnDrawnWinner,
     initialState,
   );
-  const pending = deletePending || readdPending || returnPending;
-  const error = deleteState.error || readdState.error || returnState.error;
+  const [editState, editAction, editPending] = useActionState(
+    editTicketQuantity,
+    initialState,
+  );
+  const pending = deletePending || readdPending || returnPending || editPending;
+  const error = deleteState.error || readdState.error || returnState.error || editState.error;
 
   function renderActions() {
     const primaryClass = primaryButtonClass + menuButtonClass;
@@ -455,6 +606,14 @@ export function EntrantControls({
 
     return (
       <>
+        <EditTicketsButton
+          username={username}
+          currentTickets={tickets}
+          formAction={editAction}
+          pending={pending}
+          busy={editPending}
+          className={primaryClass}
+        />
         {returnToPool ? (
           <MoveToLosersButton
             username={username}
