@@ -9,12 +9,9 @@ import { RealtimeListener } from "./realtime-listener";
 import { ThemeToggle } from "./theme-toggle";
 import { isAuthenticated } from "@/lib/auth";
 import { loadPityRows, loadRaffleState, loadActionLogs } from "@/lib/supabase";
-import type { ActionLogEntry } from "@/lib/supabase";
 
 
-export default async function Home() {
-  const logs = await loadActionLogs();
-
+export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -28,7 +25,7 @@ export default async function Home() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Suspense fallback={null}>
-            <AuthButtons logs={logs} />
+            <AuthButtons />
           </Suspense>
           <ThemeToggle />
         </div>
@@ -42,11 +39,13 @@ export default async function Home() {
   );
 }
 
-async function AuthButtons({ logs }: { logs: ActionLogEntry[] }) {
+async function AuthButtons() {
   const authed = await isAuthenticated();
   if (!authed) {
     return null;
   }
+
+  const logs = await loadActionLogs();
 
   return (
     <div className="flex items-center gap-2">
