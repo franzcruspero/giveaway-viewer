@@ -1,3 +1,5 @@
+"use cache";
+
 import { Suspense } from "react";
 import { logout } from "./actions";
 import { ActionLogButton } from "./action-log";

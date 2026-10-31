@@ -73,8 +73,44 @@ const fixtureRaffle = {
   sub_luck: 3,
 };
 
-let fixtureActionLogs: ActionLogEntry[] = [];
-let fixtureLogIdCounter = 1;
+let fixtureActionLogs: ActionLogEntry[] = [
+  {
+    id: 1,
+    created_at: new Date(Date.now() - 2 * 60000).toISOString(), // 2 minutes ago
+    action_type: "edit_tickets",
+    entrant_username: "nova",
+    detail: "Tickets changed to 5",
+  },
+  {
+    id: 2,
+    created_at: new Date(Date.now() - 5 * 60000).toISOString(), // 5 minutes ago
+    action_type: "move_to_losers",
+    entrant_username: "pixel",
+    detail: "Moved to losers (ticket revoked)",
+  },
+  {
+    id: 3,
+    created_at: new Date(Date.now() - 15 * 60000).toISOString(), // 15 minutes ago
+    action_type: "delete",
+    entrant_username: "ash",
+    detail: "Removed from raffle",
+  },
+  {
+    id: 4,
+    created_at: new Date(Date.now() - 45 * 60000).toISOString(), // 45 minutes ago
+    action_type: "readd",
+    entrant_username: "birch",
+    detail: "Added back to raffle",
+  },
+  {
+    id: 5,
+    created_at: new Date(Date.now() - 2 * 3600000).toISOString(), // 2 hours ago
+    action_type: "edit_tickets",
+    entrant_username: "ember",
+    detail: "Tickets changed to 12",
+  },
+];
+let fixtureLogIdCounter = 6;
 
 function usingFixtures(): boolean {
   return !process.env.SUPABASE_URL || !process.env.SUPABASE_KEY;
