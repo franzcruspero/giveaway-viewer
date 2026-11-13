@@ -128,8 +128,8 @@ async function loadEntries() {
     }
 }
 
-function drawWinners(rows, count, subLuck) {
-    const pool = rows.map((row) => {
+export function weightedPool(rows, subLuck) {
+    return rows.map((row) => {
         const tickets = Number(row.pity_tickets);
         return {
             username: row.username,
@@ -137,6 +137,10 @@ function drawWinners(rows, count, subLuck) {
             weight: row.is_subscriber ? tickets * subLuck : tickets,
         };
     });
+}
+
+export function drawWinners(rows, count, subLuck) {
+    const pool = weightedPool(rows, subLuck);
     const winners = [];
     const draws = Math.min(count, pool.length);
 
@@ -158,6 +162,17 @@ function drawWinners(rows, count, subLuck) {
     }
 
     return winners;
+}
+
+export function winnerLabel(winner, place) {
+    const name = winner?.username || 'Unknown';
+    const total = Number(winner?.total);
+    const weight = Number(winner?.weight);
+    const odds =
+        Number.isFinite(total) && total > 0 && Number.isFinite(weight)
+            ? ` (${((weight / total) * 100).toFixed(2)}%)`
+            : '';
+    return `${place}. @${name}${odds}`;
 }
 
 export const handler = async (event) => {
@@ -218,7 +233,7 @@ export const handler = async (event) => {
         });
 
         const names = winners
-            .map((winner, index) => `${index + 1}. @${winner?.username || 'Unknown'}`)
+            .map((winner, index) => winnerLabel(winner, index + 1))
             .join(', ');
         const joinCode = process.env.JOIN_CODE ?? ''
         const discordLink = process.env.DISCORD_LINK ?? ''

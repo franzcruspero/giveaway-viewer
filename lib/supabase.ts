@@ -4,6 +4,7 @@ export type PityRow = {
   username: string;
   pity_tickets: number;
   is_loser: boolean;
+  is_subscriber: boolean;
 };
 
 export type WriteResult = {
@@ -34,10 +35,11 @@ type FixtureEntrant = {
   username: string;
   pity_tickets: number;
   is_loser: boolean;
+  is_subscriber?: boolean;
 };
 
 const fixtureEntrants: FixtureEntrant[] = [
-  { username: "nova", pity_tickets: 4, is_loser: false },
+  { username: "nova", pity_tickets: 4, is_loser: false, is_subscriber: true },
   { username: "pixel", pity_tickets: 2, is_loser: false },
   { username: "ash", pity_tickets: 8, is_loser: false },
   { username: "birch", pity_tickets: 7, is_loser: false },
@@ -51,7 +53,7 @@ const fixtureEntrants: FixtureEntrant[] = [
   { username: "jade", pity_tickets: 1, is_loser: false },
   { username: "kelp", pity_tickets: 1, is_loser: false },
   { username: "quartz", pity_tickets: 1, is_loser: false },
-  { username: "lark", pity_tickets: 9, is_loser: true },
+  { username: "lark", pity_tickets: 9, is_loser: true, is_subscriber: true },
   { username: "mink", pity_tickets: 8, is_loser: true },
   { username: "newt", pity_tickets: 7, is_loser: true },
   { username: "onyx", pity_tickets: 6, is_loser: true },
@@ -127,6 +129,7 @@ type PityRowRecord = {
   username: string | null;
   pity_tickets: number | string | null;
   is_loser: boolean | null;
+  is_subscriber: boolean | null;
 };
 
 function normalizeRow(row: PityRowRecord): PityRow {
@@ -136,6 +139,7 @@ function normalizeRow(row: PityRowRecord): PityRow {
     username: row.username?.trim() ?? "",
     pity_tickets: Number.isFinite(tickets) ? tickets : 0,
     is_loser: row.is_loser === true,
+    is_subscriber: row.is_subscriber === true,
   };
 }
 
@@ -189,7 +193,7 @@ export async function loadPityRows(): Promise<
 
   const { data, error } = await supabase
     .from("pity_system")
-    .select("username, pity_tickets, is_loser")
+    .select("username, pity_tickets, is_loser, is_subscriber")
     .order("pity_tickets", { ascending: false })
     .returns<PityRowRecord[]>();
 
@@ -382,7 +386,12 @@ function sortedFixtureRows(): PityRow[] {
         right.pity_tickets - left.pity_tickets ||
         left.username.localeCompare(right.username),
     )
-    .map((row) => ({ ...row }));
+    .map((row) => ({
+      username: row.username,
+      pity_tickets: row.pity_tickets,
+      is_loser: row.is_loser,
+      is_subscriber: row.is_subscriber === true,
+    }));
 }
 
 function readFixtureRaffle(): { state: RaffleState } {
