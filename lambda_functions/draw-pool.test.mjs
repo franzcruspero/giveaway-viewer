@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 process.env.SUPABASE_URL ??= 'https://example.supabase.co';
 process.env.SUPABASE_KEY ??= 'test-key';
 
-const { weightedPool } = await import('./draw.mjs');
+const { weightedPool, winnerLabel } = await import('./draw.mjs');
 
 // Field at draw time: 12 entrants still in the raffle, plus the 3 drawn winners.
 // Sub luck ×2 applies only to the starred subscribers.
@@ -121,5 +121,16 @@ describe('3-winner draw, actual subscribers, sub luck x2', () => {
             'Sub luck x2 doubles subscribers only. yvessaintfall, brandongodzilla3, keygenie, and emppun8or keep their raw ticket weight.',
         );
         console.log(lines.join('\n'));
+    });
+
+    it('adds each winner roll chance to the chat label', () => {
+        assert.equal(
+            winnerLabel({ username: 'vdara_', weight: 18, total: 94 }, 1),
+            '1. @vdara_ (19.15%)',
+        );
+        assert.equal(
+            winnerLabel({ username: 'wolf780', weight: 12, total: 76 }, 2),
+            '2. @wolf780 (15.79%)',
+        );
     });
 });

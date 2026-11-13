@@ -164,6 +164,17 @@ export function drawWinners(rows, count, subLuck) {
     return winners;
 }
 
+export function winnerLabel(winner, place) {
+    const name = winner?.username || 'Unknown';
+    const total = Number(winner?.total);
+    const weight = Number(winner?.weight);
+    const odds =
+        Number.isFinite(total) && total > 0 && Number.isFinite(weight)
+            ? ` (${((weight / total) * 100).toFixed(2)}%)`
+            : '';
+    return `${place}. @${name}${odds}`;
+}
+
 export const handler = async (event) => {
     // Safely extract query parameters whether using Function URLs or API Gateway
     const queryParams = event.queryStringParameters || {};
@@ -222,7 +233,7 @@ export const handler = async (event) => {
         });
 
         const names = winners
-            .map((winner, index) => `${index + 1}. @${winner?.username || 'Unknown'}`)
+            .map((winner, index) => winnerLabel(winner, index + 1))
             .join(', ');
         const joinCode = process.env.JOIN_CODE ?? ''
         const discordLink = process.env.DISCORD_LINK ?? ''
