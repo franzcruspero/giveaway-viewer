@@ -14,6 +14,20 @@ const variantAccent: Record<EntrantVariant, CardAccent> = {
   loser: "zinc",
 };
 
+function SubscriberMark() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      role="img"
+      aria-label="Subscriber"
+      className="size-3.5 shrink-0 text-[#9146FF]"
+    >
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292Z" />
+    </svg>
+  );
+}
+
 function CardBox({
   accent,
   children,
@@ -126,8 +140,13 @@ function EntrantSection({
                     key={`${row.username}-${index}`}
                     className="[&:not(:last-child)>td]:border-b [&:not(:last-child)>td]:border-zinc-100 dark:[&:not(:last-child)>td]:border-zinc-800/80"
                   >
-                    <td className="py-2 pr-4 pl-3 break-words @[46rem]:w-[23rem]">
-                      {row.username || "—"}
+                    <td className="py-2 pr-4 pl-3 @[46rem]:w-[23rem]">
+                      <span className="inline-flex max-w-full items-center gap-1.5">
+                        <span className="min-w-0 break-words">
+                          {row.username || "—"}
+                        </span>
+                        {row.is_subscriber ? <SubscriberMark /> : null}
+                      </span>
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums whitespace-nowrap sm:w-28">
                       {row.pity_tickets.toLocaleString("en-US")}
@@ -171,6 +190,7 @@ export function EntrantLists({
         username,
         pity_tickets: 0,
         is_loser: false,
+        is_subscriber: false,
       },
   );
 

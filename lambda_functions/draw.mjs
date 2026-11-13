@@ -128,8 +128,8 @@ async function loadEntries() {
     }
 }
 
-function drawWinners(rows, count, subLuck) {
-    const pool = rows.map((row) => {
+export function weightedPool(rows, subLuck) {
+    return rows.map((row) => {
         const tickets = Number(row.pity_tickets);
         return {
             username: row.username,
@@ -137,6 +137,10 @@ function drawWinners(rows, count, subLuck) {
             weight: row.is_subscriber ? tickets * subLuck : tickets,
         };
     });
+}
+
+export function drawWinners(rows, count, subLuck) {
+    const pool = weightedPool(rows, subLuck);
     const winners = [];
     const draws = Math.min(count, pool.length);
 
